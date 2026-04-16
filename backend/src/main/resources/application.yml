@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: zcxt-backend
+  profiles:
+    active: dev
+
+server:
+  port: 8080
+
+app:
+  security:
+    jwt:
+      issuer: zcxt
+      ttlSeconds: 86400
+      secret: change-me-in-prod
+  crypto:
+    aesKey: change-me-in-prod
+  qrcode:
+    baseUrl: http://localhost:8080
+    storage: local
+    localDir: ./data/qrcodes
+  ai:
+    enabled: false
+    baseUrl: http://localhost:9000
+  bigdata:
+    enabled: false
+

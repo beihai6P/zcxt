@@ -1,0 +1,89 @@
+:root {
+  /* UI设计规范配色 */
+  --el-color-primary: #1E88E5;
+  --el-color-primary-light-3: #64B5F6;
+  --el-color-primary-light-5: #90CAF9;
+  --el-color-primary-light-7: #BBDEFB;
+  --el-color-primary-light-8: #E3F2FD;
+  --el-color-primary-light-9: #E3F2FD;
+  --el-color-primary-dark-2: #1565C0;
+  
+  --el-color-success: #4CAF50;
+  --el-color-warning: #FFC107;
+  --el-color-danger: #F44336;
+  --el-color-error: #F44336;
+
+  /* 文字颜色规范 */
+  --el-text-color-primary: #333333;
+  --el-text-color-regular: #666666;
+  --el-text-color-secondary: #999999;
+  
+  /* 背景与边框规范 */
+  --el-bg-color-page: #F5F7FA;
+  --el-border-color: #DDDDDD;
+  --el-border-color-light: #EEEEEE;
+
+  /* 组件规范 */
+  --el-border-radius-base: 4px;
+  --el-border-radius-round: 8px;
+}
+
+body {
+  margin: 0;
+  font-family: 'Microsoft YaHei', 'Source Han Sans CN', Arial, sans-serif;
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-regular);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 表格规范对齐 */
+.el-table {
+  --el-table-border-color: #EEEEEE;
+  --el-table-header-bg-color: #F5F7FA;
+  --el-table-header-text-color: #333333;
+}
+
+.el-table th.el-table__cell {
+  border-bottom: 2px solid #1E88E5 !important;
+  font-weight: 500;
+}
+
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+  background-color: #F9FAFB !important;
+}
+
+/* 侧边栏规范对齐 */
+.el-menu-item.is-active {
+  background-color: #E3F2FD !important;
+  color: #1E88E5 !important;
+}
+
+/* 卡片阴影规范 */
+.el-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  border: none !important;
+}
+
+/* 弹窗规范对齐 */
+.el-dialog {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+.el-dialog__header {
+  border-bottom: 1px solid #EEEEEE;
+  margin-right: 0 !important;
+  padding-bottom: 15px;
+}
+.el-dialog__footer {
+  border-top: 1px solid #EEEEEE;
+  background-color: #F5F7FA;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+#app {
+  min-height: 100vh;
+}

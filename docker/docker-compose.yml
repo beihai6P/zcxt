@@ -1,0 +1,67 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: zcxt
+    ports:
+      - "3306:3306"
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis:
+    image: redis:7.4
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:RELEASE.2025-01-20T14-49-07Z
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9002"
+    ports:
+      - "9001:9000"
+      - "9002:9002"
+    volumes:
+      - minio_data:/data
+
+  ai:
+    build:
+      context: ..
+      dockerfile: ai-service/Dockerfile
+    ports:
+      - "9000:9000"
+
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      APP_SECURITY_JWT_SECRET: change-me-in-prod
+      APP_CRYPTO_AESKEY: change-me-in-prod
+      APP_AI_ENABLED: "true"
+      APP_AI_BASEURL: http://ai:9000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - redis
+      - minio
+      - ai
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
+  minio_data:
+
