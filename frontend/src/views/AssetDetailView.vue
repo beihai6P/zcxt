@@ -3,6 +3,7 @@
     <div class="top">
       <div class="title">资产详情</div>
       <div class="spacer" />
+      <el-button @click="printQr">打印二维码</el-button>
       <el-button @click="back">返回</el-button>
     </div>
 
@@ -20,6 +21,25 @@
     <div class="section">
       <div class="card-title">二维码</div>
       <el-image v-if="asset.qrcodeUrl" :src="asset.qrcodeUrl" style="width: 160px; height: 160px" />
+    </div>
+
+    <div class="section">
+      <div class="card-title">图片与附件</div>
+      <div class="attach-actions">
+        <el-upload :show-file-list="false" :http-request="uploadFile">
+          <el-button type="primary">上传附件</el-button>
+        </el-upload>
+      </div>
+      <el-empty v-if="attachments.length === 0" description="暂无附件" />
+      <div v-else class="attach-list">
+        <el-card v-for="a in attachments" :key="a.attachmentId" class="attach-item" shadow="never">
+          <div class="attach-row">
+            <a :href="a.url" target="_blank" rel="noreferrer">{{ a.originalName }}</a>
+            <div class="spacer" />
+            <el-button link type="danger" @click="removeAttachment(a.attachmentId)">删除</el-button>
+          </div>
+        </el-card>
+      </div>
     </div>
 
     <div class="section">
@@ -67,6 +87,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { http } from '../api/http'
+import type { UploadRequestOptions } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
@@ -94,6 +115,7 @@ type History = {
 
 const asset = ref<Asset | null>(null)
 const history = ref<History[]>([])
+const attachments = ref<any[]>([])
 const changing = ref(false)
 
 const statuses = ['在用', '闲置', '维修', '报废']
@@ -114,27 +136,65 @@ const load = async () => {
 
   const h = await http.get(`/api/assets/${assetId}/history`, { params: { page: 1, size: 50 } })
   if (h.data?.success) history.value = h.data.data.records
+
+  const at = await http.get(`/api/files/assets/${assetId}`)
+  if (at.data?.success) attachments.value = at.data.data
 }
 
 const submitChange = async () => {
   if (!asset.value) return
   changing.value = true
   try {
-    const r = await http.post(`/api/assets/${assetId}/change`, {
-      changeType: change.changeType,
-      newStatus: change.newStatus,
-      deptId: change.deptId || null,
-      userId: change.userId || null,
-      approverId: change.approverId || null,
-      reason: change.reason || null,
+    const r = await http.post(`/api/assets/${assetId}/apply`, {
+      applyType: change.changeType,
+      applyReason: change.reason || null,
+      targetStatus: change.newStatus,
+      targetDeptId: change.deptId || null,
+      targetUserId: change.userId || null,
     })
     if (!r.data?.success) throw new Error(r.data?.message || '提交失败')
-    ElMessage.success('已提交')
+    ElMessage.success('已提交审批')
     await load()
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.message || e?.message || '提交失败')
   } finally {
     changing.value = false
+  }
+}
+
+const printQr = async () => {
+  try {
+    const r = await http.post('/api/assets/qrcodes/print', { assetIds: [assetId], cols: 1, rows: 1 }, { responseType: 'blob' })
+    const url = URL.createObjectURL(r.data)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '打印失败')
+  }
+}
+
+const uploadFile = async (options: UploadRequestOptions) => {
+  const form = new FormData()
+  form.append('assetId', assetId)
+  form.append('file', options.file)
+  try {
+    const r = await http.post('/api/files/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    if (!r.data?.success) throw new Error(r.data?.message || '上传失败')
+    ElMessage.success('上传成功')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '上传失败')
+  }
+}
+
+const removeAttachment = async (id: string) => {
+  try {
+    const r = await http.delete(`/api/files/${id}`)
+    if (!r.data?.success) throw new Error(r.data?.message || '删除失败')
+    ElMessage.success('已删除')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '删除失败')
   }
 }
 
@@ -162,6 +222,21 @@ onMounted(() => {
 .section {
   margin-top: 20px;
 }
+.attach-actions {
+  margin-bottom: 12px;
+}
+.attach-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.attach-item {
+  border-radius: 8px;
+}
+.attach-row {
+  display: flex;
+  align-items: center;
+}
 .card-title {
   font-size: 16px;
   font-weight: 600;
@@ -169,4 +244,3 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 </style>
-

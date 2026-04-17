@@ -6,6 +6,7 @@ type UserInfo = {
   displayName: string
   roleId: string
   deptId: string | null
+  permissions: string[]
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -15,6 +16,8 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAuthed: (s) => Boolean(s.token),
+    permissions: (s) => s.user?.permissions || [],
+    hasPerm: (s) => (perm: string) => (s.user?.permissions || []).includes(perm) || s.user?.roleId === 'role-super',
   },
   actions: {
     setSession(token: string, user: UserInfo) {
@@ -31,4 +34,3 @@ export const useAuthStore = defineStore('auth', {
     },
   },
 })
-

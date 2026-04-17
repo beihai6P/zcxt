@@ -10,7 +10,7 @@
       
       <div class="actions">
         <el-button type="primary" :loading="backingUp" @click="handleBackup">执行数据备份</el-button>
-        <el-button type="warning" @click="dialogVisible = true">数据恢复</el-button>
+        <el-button type="warning" @click="openRestore">数据恢复</el-button>
       </div>
 
       <el-divider />
@@ -35,15 +35,14 @@
     />
     <el-form label-width="100px">
       <el-form-item label="选择备份文件">
-        <el-select placeholder="请选择历史备份文件" style="width: 100%">
-          <el-option label="backup_20260415_120000.zip" value="1" />
-          <el-option label="backup_20260414_120000.zip" value="2" />
+        <el-select v-model="selectedBackup" placeholder="请选择历史备份文件" style="width: 100%">
+          <el-option v-for="b in backups" :key="b" :label="b" :value="b" />
         </el-select>
       </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="dialogVisible = false">取消</el-button>
-      <el-button type="danger" :loading="restoring" @click="handleRestore">确认恢复</el-button>
+      <el-button type="danger" :disabled="!selectedBackup" :loading="restoring" @click="handleRestore">确认恢复</el-button>
     </template>
   </el-dialog>
 </template>
@@ -56,13 +55,39 @@ import { http } from '../api/http'
 const backingUp = ref(false)
 const dialogVisible = ref(false)
 const restoring = ref(false)
+const backups = ref<string[]>([])
+const selectedBackup = ref('')
+
+const loadBackups = async () => {
+  const r = await http.get('/api/system/backups')
+  if (r.data?.success) backups.value = r.data.data
+}
+
+const openRestore = async () => {
+  selectedBackup.value = ''
+  dialogVisible.value = true
+  try {
+    await loadBackups()
+  } catch (e) {
+  }
+}
 
 const handleBackup = async () => {
   backingUp.value = true
   try {
     const r = await http.post('/api/system/backup')
     if (r.data?.success) {
-      ElMessage.success(r.data.message || '数据备份成功')
+      const fileName = r.data.data?.fileName
+      ElMessage.success('数据备份成功')
+      if (fileName) {
+        const blob = await http.get(`/api/system/backups/${encodeURIComponent(fileName)}`, { responseType: 'blob' })
+        const url = URL.createObjectURL(blob.data)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(url), 10000)
+      }
     } else {
       throw new Error(r.data?.message || '备份失败')
     }
@@ -76,9 +101,9 @@ const handleBackup = async () => {
 const handleRestore = async () => {
   restoring.value = true
   try {
-    const r = await http.post('/api/system/restore')
+    const r = await http.post('/api/system/restore', { fileName: selectedBackup.value })
     if (r.data?.success) {
-      ElMessage.success(r.data.message || '数据恢复成功')
+      ElMessage.success('数据恢复成功')
       dialogVisible.value = false
     } else {
       throw new Error(r.data?.message || '恢复失败')
@@ -101,9 +126,9 @@ const handleClean = () => {
     }
   ).then(async () => {
     try {
-      const r = await http.post('/api/system/clean')
+      const r = await http.post('/api/system/clean?keep=10')
       if (r.data?.success) {
-        ElMessage.success(r.data.message || '数据清理成功')
+        ElMessage.success(`数据清理成功，已清理备份文件数量：${r.data.data}`)
       } else {
         throw new Error(r.data?.message || '清理失败')
       }

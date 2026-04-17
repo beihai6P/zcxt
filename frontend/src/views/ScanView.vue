@@ -1,9 +1,17 @@
 <template>
   <el-card>
     <div class="title">扫码查询</div>
-    <el-upload :auto-upload="false" :show-file-list="false" accept="image/*" :on-change="onFile">
-      <el-button type="primary">上传二维码图片</el-button>
-    </el-upload>
+    <div class="actions">
+      <el-button type="primary" :disabled="scanning" @click="startScan">摄像头扫码</el-button>
+      <el-button :disabled="!scanning" @click="stopScan">停止扫码</el-button>
+      <el-upload :auto-upload="false" :show-file-list="false" accept="image/*" :on-change="onFile">
+        <el-button>上传二维码图片</el-button>
+      </el-upload>
+    </div>
+
+    <div v-show="scanning" class="section">
+      <video ref="videoEl" class="video" muted playsinline />
+    </div>
 
     <div v-if="decoded" class="section">
       <div class="label">识别结果</div>
@@ -41,6 +49,41 @@ import { http } from '../api/http'
 const decoded = ref('')
 const loading = ref(false)
 const resolved = ref<any>(null)
+const scanning = ref(false)
+const videoEl = ref<HTMLVideoElement | null>(null)
+let videoReader: BrowserQRCodeReader | null = null
+let stopControls: any = null
+
+const startScan = async () => {
+  if (scanning.value) return
+  resolved.value = null
+  decoded.value = ''
+  scanning.value = true
+  stopControls = null
+  try {
+    if (!videoReader) videoReader = new BrowserQRCodeReader()
+    const video = videoEl.value
+    if (!video) throw new Error('摄像头初始化失败')
+    await (videoReader as any).decodeFromVideoDevice(undefined, video, (result: any, _err: any, controls: any) => {
+      if (controls && !stopControls) stopControls = controls
+      if (result) {
+        decoded.value = result.getText()
+        scanning.value = false
+        if (stopControls?.stop) stopControls.stop()
+      }
+    })
+  } catch (e: any) {
+    scanning.value = false
+    ElMessage.error(e?.message || '摄像头扫码失败')
+    if (stopControls?.stop) stopControls.stop()
+  }
+}
+
+const stopScan = () => {
+  scanning.value = false
+  if (stopControls?.stop) stopControls.stop()
+  if (videoReader) (videoReader as any).reset?.()
+}
 
 const onFile = async (file: UploadFile) => {
   resolved.value = null
@@ -99,8 +142,20 @@ const decodeFromDataUrl = async (dataUrl: string) => {
   color: #333333;
   margin-bottom: 16px;
 }
+.actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 .section {
   margin-top: 16px;
+}
+.video {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 8px;
+  background: #000000;
 }
 .label {
   margin-bottom: 8px;

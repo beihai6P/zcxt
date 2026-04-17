@@ -8,6 +8,7 @@ import com.zcxt.inventory.service.AssetInventoryService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,6 +21,7 @@ public class AssetInventoryController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('inventory:manage')")
     public ApiResponse<Page<AssetInventory>> page(
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "10") @Min(1) int size,
@@ -29,6 +31,7 @@ public class AssetInventoryController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('inventory:manage')")
     public ApiResponse<AssetInventory> get(@PathVariable String id) {
         var inv = inventoryService.getById(id);
         if (inv == null) {
@@ -38,6 +41,7 @@ public class AssetInventoryController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('inventory:manage')")
     public ApiResponse<AssetInventory> create(@Valid @RequestBody InventoryCreateRequest req) {
         AssetInventory inv = new AssetInventory();
         inv.setInventoryName(req.inventoryName());
@@ -51,6 +55,7 @@ public class AssetInventoryController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('inventory:manage')")
     public ApiResponse<AssetInventory> update(@PathVariable String id, @RequestBody InventoryUpdateRequest req) {
         AssetInventory patch = new AssetInventory();
         patch.setInventoryName(req.inventoryName());
@@ -59,12 +64,27 @@ public class AssetInventoryController {
     }
 
     @GetMapping("/{id}/details")
+    @PreAuthorize("hasAuthority('inventory:manage')")
     public ApiResponse<Page<AssetInventoryDetail>> getDetails(
             @PathVariable String id,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "10") @Min(1) int size
     ) {
         return ApiResponse.ok(inventoryService.getDetails(id, page, size));
+    }
+
+    @PostMapping("/{id}/check")
+    @PreAuthorize("hasAuthority('inventory:manage')")
+    public ApiResponse<Void> check(@PathVariable String id, @Valid @RequestBody CheckRequest req) {
+        inventoryService.check(id, req.assetId(), req.status(), req.abnormalType(), req.abnormalReason(), req.checkerId());
+        return ApiResponse.ok(null);
+    }
+
+    @PostMapping("/{id}/finish")
+    @PreAuthorize("hasAuthority('inventory:manage')")
+    public ApiResponse<Void> finish(@PathVariable String id) {
+        inventoryService.finish(id);
+        return ApiResponse.ok(null);
     }
 
     public record InventoryCreateRequest(
@@ -81,6 +101,15 @@ public class AssetInventoryController {
     public record InventoryUpdateRequest(
             String inventoryName,
             String status
+    ) {
+    }
+
+    public record CheckRequest(
+            @NotBlank String assetId,
+            @NotBlank String status,
+            String abnormalType,
+            String abnormalReason,
+            @NotBlank String checkerId
     ) {
     }
 }

@@ -3,6 +3,7 @@ package com.zcxt.ai.controller;
 import com.zcxt.ai.entity.AiWarning;
 import com.zcxt.ai.service.AiWarningService;
 import com.zcxt.common.web.ApiResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,6 +26,7 @@ public class AiWarningController {
     }
 
     @GetMapping("/sync")
+    @PreAuthorize("hasAuthority('sys:manage')")
     public ApiResponse<Integer> sync() {
         return ApiResponse.ok(warningService.syncWarnings());
     }

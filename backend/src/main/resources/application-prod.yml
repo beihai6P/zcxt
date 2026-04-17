@@ -28,5 +28,6 @@ app:
       bucket: zcxt
   ai:
     enabled: true
+    baseUrl: http://localhost:9000
   bigdata:
     enabled: true

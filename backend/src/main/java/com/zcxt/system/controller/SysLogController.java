@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zcxt.common.web.ApiResponse;
 import com.zcxt.system.entity.SysLog;
 import com.zcxt.system.service.SysLogService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,6 +17,7 @@ public class SysLogController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('sys:manage')")
     public ApiResponse<Page<SysLog>> page(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,

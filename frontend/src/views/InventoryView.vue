@@ -90,12 +90,22 @@
   </el-dialog>
 
   <el-dialog v-model="detailDialog.visible" title="盘点详情" width="800px">
+    <div class="detail-actions">
+      <el-button type="primary" @click="finishInventory">完成盘点</el-button>
+      <el-button @click="loadDetails">刷新</el-button>
+    </div>
     <el-table :data="detailDialog.rows">
       <el-table-column prop="assetId" label="资产编号" width="160" />
       <el-table-column prop="status" label="状态" width="100" />
       <el-table-column prop="abnormalType" label="异常类型" width="120" />
       <el-table-column prop="abnormalReason" label="异常原因" min-width="160" />
       <el-table-column prop="checkTime" label="盘点时间" width="160" />
+      <el-table-column label="操作" width="160" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" @click="markNormal(row)">正常</el-button>
+          <el-button link type="danger" @click="markAbnormal(row)">异常</el-button>
+        </template>
+      </el-table-column>
     </el-table>
     <div class="pager" style="margin-top: 16px;">
       <el-pagination
@@ -112,8 +122,9 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { http } from '../api/http'
+import { useAuthStore } from '../stores/auth'
 
 type Inventory = {
   inventoryId: string
@@ -158,6 +169,8 @@ const detailDialog = reactive({
   page: 1,
   size: 10,
 })
+
+const auth = useAuthStore()
 
 const load = async () => {
   const r = await http.get('/api/inventories', {
@@ -262,6 +275,58 @@ const loadDetails = async () => {
   }
 }
 
+const markNormal = async (row: any) => {
+  try {
+    const r = await http.post(`/api/inventories/${detailDialog.inventoryId}/check`, {
+      assetId: row.assetId,
+      status: '已盘点',
+      abnormalType: null,
+      abnormalReason: null,
+      checkerId: auth.user?.userId || 'system',
+    })
+    if (!r.data?.success) throw new Error(r.data?.message || '操作失败')
+    ElMessage.success('已标记为正常')
+    await loadDetails()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '操作失败')
+  }
+}
+
+const markAbnormal = async (row: any) => {
+  try {
+    const res = await ElMessageBox.prompt('请输入异常原因', '标记异常', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputPlaceholder: '例如：资产缺失/状态不符等',
+    })
+    const r = await http.post(`/api/inventories/${detailDialog.inventoryId}/check`, {
+      assetId: row.assetId,
+      status: '异常',
+      abnormalType: '异常',
+      abnormalReason: res.value,
+      checkerId: auth.user?.userId || 'system',
+    })
+    if (!r.data?.success) throw new Error(r.data?.message || '操作失败')
+    ElMessage.success('已标记为异常')
+    await loadDetails()
+  } catch (e: any) {
+    if (e === 'cancel' || e?.message === 'cancel') return
+    ElMessage.error(e?.response?.data?.message || e?.message || '操作失败')
+  }
+}
+
+const finishInventory = async () => {
+  try {
+    const r = await http.post(`/api/inventories/${detailDialog.inventoryId}/finish`)
+    if (!r.data?.success) throw new Error(r.data?.message || '操作失败')
+    ElMessage.success('盘点已完成')
+    detailDialog.visible = false
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '操作失败')
+  }
+}
+
 onMounted(() => {
   load()
 })
@@ -288,5 +353,10 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   margin-top: 16px;
+}
+.detail-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 </style>

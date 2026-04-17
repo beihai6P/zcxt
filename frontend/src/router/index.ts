@@ -11,6 +11,7 @@ import ConsumablesView from '../views/ConsumablesView.vue'
 import SysLogView from '../views/SysLogView.vue'
 import ApprovalView from '../views/ApprovalView.vue'
 import SystemView from '../views/SystemView.vue'
+import UsersView from '../views/UsersView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -29,6 +30,7 @@ const router = createRouter({
         { path: 'consumables', component: ConsumablesView },
         { path: 'syslog', component: SysLogView },
         { path: 'system', component: SystemView },
+        { path: 'users', component: UsersView },
         { path: 'approvals', component: ApprovalView },
       ],
     },

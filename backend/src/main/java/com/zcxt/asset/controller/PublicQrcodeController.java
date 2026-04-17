@@ -63,6 +63,12 @@ public class PublicQrcodeController {
         String assetId = assetIdObj.toString();
 
         AssetBase asset = assetBaseMapper.selectById(assetId);
+        if (asset == null) {
+            return ApiResponse.fail("资产不存在");
+        }
+        if (asset.getQrcodeContent() == null || !asset.getQrcodeContent().equals(req.content())) {
+            return ApiResponse.fail("二维码已失效，请使用最新二维码");
+        }
         Page<AssetChangeHistory> history = historyMapper.selectPage(Page.of(1, 20), new LambdaQueryWrapper<AssetChangeHistory>()
                 .eq(AssetChangeHistory::getAssetId, assetId)
                 .orderByDesc(AssetChangeHistory::getChangeTime));
@@ -86,7 +92,7 @@ public class PublicQrcodeController {
 
     private Map<String, Object> readMap(String json) {
         try {
-            return objectMapper.readValue(json, Map.class);
+            return objectMapper.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
             throw new IllegalStateException("二维码解析失败");
         }
@@ -95,4 +101,3 @@ public class PublicQrcodeController {
     public record ResolveRequest(String content) {
     }
 }
-

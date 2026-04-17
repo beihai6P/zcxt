@@ -81,6 +81,11 @@ public class QrcodeService {
         throw new IllegalStateException("当前运行模式不支持该二维码存储类型: " + storage);
     }
 
+    public byte[] generatePngBytes(String content, int size) {
+        int s = Math.max(size, 160);
+        return generatePng(content, s, s);
+    }
+
     private byte[] generatePng(String content, int width, int height) {
         QRCodeWriter writer = new QRCodeWriter();
         BitMatrix matrix;

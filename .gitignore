@@ -1,0 +1,76 @@
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build files
+target/
+dist/
+build/
+
+# Dependencies
+node_modules/
+.venv/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Log files
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database files
+*.db
+*.mv.db
+*.trace.db
+
+# Test files
+/test
+/coverage
+
+# Temporary files
+*.tmp
+*.temp
+
+# IDE specific files
+.vscode/*
+!.vscode/extensions.json
+
+# Build artifacts
+*.jar
+*.war
+*.ear
+
+# Maven
+.mvn/
+
+# Gradle
+.gradle/
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Docker
+.dockerignore
+
+# Local configuration files
+application-dev.yml
+application-prod.yml
+
+# QR code images
+backend/data/qrcodes/
+
+# Excel files
+test.xlsx
+test_export.xlsx

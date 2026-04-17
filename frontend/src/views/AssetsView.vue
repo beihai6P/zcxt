@@ -3,6 +3,11 @@
     <div class="header">
       <div class="title">资产基础管理</div>
       <div class="spacer" />
+      <el-upload :show-file-list="false" accept=".xlsx,.xls" :http-request="importExcel">
+        <el-button>导入Excel</el-button>
+      </el-upload>
+      <el-button @click="exportExcel">导出Excel</el-button>
+      <el-button :disabled="selectedIds.length === 0" @click="printSelected">批量打印二维码</el-button>
       <el-button type="primary" @click="openCreate">新增资产</el-button>
       <el-button @click="load">刷新</el-button>
     </div>
@@ -26,7 +31,8 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="rows" row-key="assetId">
+    <el-table :data="rows" row-key="assetId" @selection-change="onSelectionChange">
+      <el-table-column type="selection" width="50" />
       <el-table-column prop="assetId" label="资产编号" width="160" />
       <el-table-column prop="assetName" label="资产名称" min-width="160" />
       <el-table-column prop="assetType" label="类型" width="140" />
@@ -114,9 +120,10 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { http } from '../api/http'
+import type { UploadRequestOptions } from 'element-plus'
 
 type Asset = {
   assetId: string
@@ -135,11 +142,13 @@ const assetTypes = ['PC-笔记本', 'PC-组装机', '移动端', '办公设备',
 const statuses = ['在用', '闲置', '维修', '报废']
 
 const router = useRouter()
+const route = useRoute()
 const rows = ref<Asset[]>([])
 const total = ref(0)
+const selectedIds = ref<string[]>([])
 const page = ref(1)
 const size = ref(10)
-const query = reactive({ keyword: '', assetType: '', status: '' })
+const query = reactive({ keyword: '', assetType: '', status: '', deptId: '' })
 
 const dialog = reactive({
   visible: false,
@@ -172,6 +181,7 @@ const load = async () => {
       keyword: query.keyword || undefined,
       assetType: query.assetType || undefined,
       status: query.status || undefined,
+      deptId: query.deptId || undefined,
     },
   })
   if (r.data?.success) {
@@ -288,7 +298,66 @@ const submit = async () => {
 
 const goDetail = (assetId: string) => router.push(`/assets/${assetId}`)
 
+const onSelectionChange = (rows: Asset[]) => {
+  selectedIds.value = rows.map(r => r.assetId)
+}
+
+const printSelected = async () => {
+  if (selectedIds.value.length === 0) return
+  try {
+    const r = await http.post('/api/assets/qrcodes/print', { assetIds: selectedIds.value, cols: 2, rows: 4 }, { responseType: 'blob' })
+    const url = URL.createObjectURL(r.data)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '打印失败')
+  }
+}
+
+const exportExcel = async () => {
+  try {
+    const r = await http.get('/api/assets/export', { responseType: 'blob' })
+    const url = URL.createObjectURL(r.data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = '资产明细.xlsx'
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '导出失败')
+  }
+}
+
+const importExcel = async (options: UploadRequestOptions) => {
+  console.log('开始导入Excel文件:', options.file)
+  const form = new FormData()
+  form.append('file', options.file)
+  try {
+    console.log('发送导入请求...')
+    // 移除手动设置的 Content-Type，让 axios 自动处理
+    const r = await http.post('/api/assets/import', form)
+    console.log('导入请求响应:', r)
+    if (!r.data?.success) throw new Error(r.data?.message || '导入失败')
+    const data = r.data.data
+    if (data.failCount > 0) {
+      ElMessage.warning(`导入完成：成功${data.successCount}，失败${data.failCount}（仅展示前50条）`)
+    } else {
+      ElMessage.success(`导入完成：成功${data.successCount}`)
+    }
+    await load()
+  } catch (e: any) {
+    console.error('导入失败:', e)
+    console.error('错误响应:', e?.response)
+    ElMessage.error(e?.response?.data?.message || e?.message || '导入失败')
+  }
+}
+
 onMounted(() => {
+  const q: any = route.query || {}
+  if (typeof q.keyword === 'string') query.keyword = q.keyword
+  if (typeof q.assetType === 'string') query.assetType = q.assetType
+  if (typeof q.status === 'string') query.status = q.status
+  if (typeof q.deptId === 'string') query.deptId = q.deptId
   load()
 })
 </script>
@@ -316,4 +385,3 @@ onMounted(() => {
   margin-top: 16px;
 }
 </style>
-

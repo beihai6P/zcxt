@@ -28,8 +28,11 @@
       </el-table-column>
       <el-table-column prop="warningThreshold" label="预警阈值" width="100" />
       <el-table-column prop="updateTime" label="更新时间" width="160" />
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="220" fixed="right">
         <template #default="{ row }">
+          <el-button link type="primary" @click="openInbound(row)">入库</el-button>
+          <el-button link type="warning" @click="openOutbound(row)">出库</el-button>
+          <el-button link type="primary" @click="openTxns(row)">流水</el-button>
           <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
         </template>
       </el-table-column>
@@ -69,6 +72,48 @@
       <el-button type="primary" :loading="dialog.loading" @click="submit">提交</el-button>
     </template>
   </el-dialog>
+
+  <el-dialog v-model="txnDialog.visible" title="耗材流水" width="860px">
+    <el-table :data="txnDialog.rows">
+      <el-table-column prop="txnTime" label="时间" width="180" />
+      <el-table-column prop="txnType" label="类型" width="80" />
+      <el-table-column prop="quantity" label="数量" width="80" />
+      <el-table-column prop="deptId" label="部门" width="120" />
+      <el-table-column prop="userId" label="使用人" width="120" />
+      <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
+    </el-table>
+    <div class="pager" style="margin-top: 16px">
+      <el-pagination
+        v-model:current-page="txnDialog.page"
+        v-model:page-size="txnDialog.size"
+        :total="txnDialog.total"
+        background
+        layout="prev, pager, next, total"
+        @current-change="loadTxns"
+      />
+    </div>
+  </el-dialog>
+
+  <el-dialog v-model="opDialog.visible" :title="opDialog.mode === 'in' ? '耗材入库' : '耗材出库'" width="520px">
+    <el-form :model="opDialog.form" label-width="100px">
+      <el-form-item label="数量" required>
+        <el-input-number v-model="opDialog.form.quantity" :min="1" />
+      </el-form-item>
+      <el-form-item label="部门ID" v-if="opDialog.mode === 'out'">
+        <el-input v-model="opDialog.form.deptId" />
+      </el-form-item>
+      <el-form-item label="使用人ID" v-if="opDialog.mode === 'out'">
+        <el-input v-model="opDialog.form.userId" />
+      </el-form-item>
+      <el-form-item label="备注">
+        <el-input v-model="opDialog.form.remark" />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="opDialog.visible = false">取消</el-button>
+      <el-button type="primary" :loading="opDialog.loading" @click="submitOp">提交</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -101,6 +146,28 @@ const dialog = reactive({
     consumableType: '',
     stockQuantity: 0,
     warningThreshold: 10,
+  },
+})
+
+const txnDialog = reactive({
+  visible: false,
+  consumableId: '',
+  rows: [] as any[],
+  total: 0,
+  page: 1,
+  size: 10,
+})
+
+const opDialog = reactive({
+  visible: false,
+  loading: false,
+  mode: 'in' as 'in' | 'out',
+  consumableId: '',
+  form: {
+    quantity: 1,
+    deptId: '',
+    userId: '',
+    remark: '',
   },
 })
 
@@ -169,6 +236,69 @@ const submit = async () => {
     ElMessage.error(e?.response?.data?.message || e?.message || '提交失败')
   } finally {
     dialog.loading = false
+  }
+}
+
+const openTxns = (row: Consumable) => {
+  txnDialog.visible = true
+  txnDialog.consumableId = row.consumableId
+  txnDialog.page = 1
+  loadTxns()
+}
+
+const loadTxns = async () => {
+  const r = await http.get(`/api/consumables/${txnDialog.consumableId}/txns`, {
+    params: { page: txnDialog.page, size: txnDialog.size },
+  })
+  if (r.data?.success) {
+    txnDialog.rows = r.data.data.records
+    txnDialog.total = r.data.data.total
+  }
+}
+
+const openInbound = (row: Consumable) => {
+  opDialog.mode = 'in'
+  opDialog.consumableId = row.consumableId
+  opDialog.form = { quantity: 1, deptId: '', userId: '', remark: '' }
+  opDialog.visible = true
+}
+
+const openOutbound = (row: Consumable) => {
+  opDialog.mode = 'out'
+  opDialog.consumableId = row.consumableId
+  opDialog.form = { quantity: 1, deptId: '', userId: '', remark: '' }
+  opDialog.visible = true
+}
+
+const submitOp = async () => {
+  opDialog.loading = true
+  try {
+    if (opDialog.mode === 'in') {
+      const r = await http.post(`/api/consumables/${opDialog.consumableId}/in`, {
+        quantity: opDialog.form.quantity,
+        remark: opDialog.form.remark || null,
+      })
+      if (!r.data?.success) throw new Error(r.data?.message || '操作失败')
+      ElMessage.success('入库成功')
+    } else {
+      const r = await http.post(`/api/consumables/${opDialog.consumableId}/out`, {
+        quantity: opDialog.form.quantity,
+        deptId: opDialog.form.deptId || null,
+        userId: opDialog.form.userId || null,
+        remark: opDialog.form.remark || null,
+      })
+      if (!r.data?.success) throw new Error(r.data?.message || '操作失败')
+      ElMessage.success('出库成功')
+    }
+    opDialog.visible = false
+    await load()
+    if (txnDialog.visible && txnDialog.consumableId === opDialog.consumableId) {
+      await loadTxns()
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '操作失败')
+  } finally {
+    opDialog.loading = false
   }
 }
 

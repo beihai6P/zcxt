@@ -20,7 +20,7 @@ app:
     storage: local
     localDir: ./data/qrcodes
   ai:
-    enabled: false
+    enabled: true
     baseUrl: http://localhost:9000
   bigdata:
     enabled: false

@@ -16,13 +16,14 @@
     <el-container>
       <el-aside class="aside" width="220px">
         <el-menu :default-active="route.path" class="menu" router>
-          <el-menu-item index="/dashboard">大屏概览</el-menu-item>
-          <el-menu-item index="/assets">资产管理</el-menu-item>
-          <el-menu-item index="/approvals">审批管理</el-menu-item>
-          <el-menu-item index="/inventory">资产盘点</el-menu-item>
-          <el-menu-item index="/consumables">耗材管理</el-menu-item>
-          <el-menu-item index="/syslog">系统日志</el-menu-item>
-          <el-menu-item index="/system">系统设置</el-menu-item>
+          <el-menu-item v-if="auth.hasPerm('stats:view')" index="/dashboard">大屏概览</el-menu-item>
+          <el-menu-item v-if="auth.hasPerm('asset:read')" index="/assets">资产管理</el-menu-item>
+          <el-menu-item v-if="auth.hasPerm('approval:read')" index="/approvals">审批管理</el-menu-item>
+          <el-menu-item v-if="auth.hasPerm('inventory:manage')" index="/inventory">资产盘点</el-menu-item>
+          <el-menu-item v-if="auth.hasPerm('consumable:manage')" index="/consumables">耗材管理</el-menu-item>
+          <el-menu-item v-if="auth.hasPerm('sys:manage')" index="/syslog">系统日志</el-menu-item>
+          <el-menu-item v-if="auth.hasPerm('user:manage')" index="/users">用户管理</el-menu-item>
+          <el-menu-item v-if="auth.hasPerm('sys:manage')" index="/system">系统设置</el-menu-item>
           <el-menu-item index="/scan">扫码查询</el-menu-item>
         </el-menu>
       </el-aside>
@@ -84,4 +85,3 @@ const logout = () => {
   padding: 20px;
 }
 </style>
-

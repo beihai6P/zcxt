@@ -25,7 +25,7 @@ public class AiWarningService {
         this.warningMapper = warningMapper;
     }
 
-    @Scheduled(cron = "0 */10 * * * *")
+    @Scheduled(cron = "0 0 0 */3 * *")
     public void scheduledSync() {
         if (!appProperties.getAi().isEnabled()) {
             return;
@@ -35,7 +35,7 @@ public class AiWarningService {
 
     @Transactional
     public int syncWarnings() {
-        if (!appProperties.getAi().isEnabled()) {
+        if (!appProperties.getAi().isEnabled() || appProperties.getAi().getBaseUrl() == null) {
             return 0;
         }
 
@@ -78,7 +78,7 @@ public class AiWarningService {
     }
 
     public List<IdleRecommendationItem> getIdleRecommendations() {
-        if (!appProperties.getAi().isEnabled()) {
+        if (!appProperties.getAi().isEnabled() || appProperties.getAi().getBaseUrl() == null) {
             return List.of();
         }
         String url = appProperties.getAi().getBaseUrl() + "/recommendations/idle";
@@ -91,7 +91,7 @@ public class AiWarningService {
     }
 
     public List<ConsumablePredictionItem> getConsumablePredictions() {
-        if (!appProperties.getAi().isEnabled()) {
+        if (!appProperties.getAi().isEnabled() || appProperties.getAi().getBaseUrl() == null) {
             return List.of();
         }
         String url = appProperties.getAi().getBaseUrl() + "/predictions/consumables";

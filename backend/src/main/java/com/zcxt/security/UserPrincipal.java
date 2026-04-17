@@ -1,7 +1,7 @@
 package com.zcxt.security;
 
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
@@ -13,13 +13,15 @@ public class UserPrincipal implements UserDetails {
     private final String passwordHash;
     private final boolean enabled;
     private final String roleId;
+    private final List<GrantedAuthority> authorities;
 
-    public UserPrincipal(String userId, String username, String passwordHash, boolean enabled, String roleId) {
+    public UserPrincipal(String userId, String username, String passwordHash, boolean enabled, String roleId, List<GrantedAuthority> authorities) {
         this.userId = userId;
         this.username = username;
         this.passwordHash = passwordHash;
         this.enabled = enabled;
         this.roleId = roleId;
+        this.authorities = authorities;
     }
 
     public String getUserId() {
@@ -32,7 +34,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + roleId));
+        return authorities;
     }
 
     @Override
@@ -65,4 +67,3 @@ public class UserPrincipal implements UserDetails {
         return enabled;
     }
 }
-

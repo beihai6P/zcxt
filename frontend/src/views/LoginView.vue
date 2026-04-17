@@ -13,7 +13,7 @@
           <el-button type="primary" :loading="loading" @click="submit">登录</el-button>
         </el-form-item>
       </el-form>
-      <div class="hint">默认账号：admin / admin123</div>
+
     </el-card>
   </div>
 </template>
@@ -28,7 +28,7 @@ import { useAuthStore } from '../stores/auth'
 const router = useRouter()
 const auth = useAuthStore()
 const loading = ref(false)
-const form = reactive({ username: 'admin', password: 'admin123' })
+const form = reactive({ username: '', password: '' })
 
 const submit = async () => {
   if (!form.username || !form.password) return
@@ -46,6 +46,7 @@ const submit = async () => {
       displayName: body.data.displayName,
       roleId: body.data.roleId,
       deptId: body.data.deptId,
+      permissions: body.data.permissions || [],
     })
     await router.push('/dashboard')
   } catch (e: any) {
@@ -80,4 +81,3 @@ const submit = async () => {
   font-size: 12px;
 }
 </style>
-

@@ -43,7 +43,10 @@
     </el-col>
     <el-col :span="8">
       <el-card>
-        <div class="card-title">AI预警</div>
+        <div class="card-title">
+          <span>AI预警</span>
+          <el-button type="primary" size="small" @click="syncAiWarnings" style="float: right;">手动同步预警</el-button>
+        </div>
         <el-empty v-if="warnings.length === 0" description="暂无预警" />
         <el-timeline v-else>
           <el-timeline-item v-for="w in warnings" :key="w.warningId" :timestamp="w.warningTime">
@@ -72,12 +75,29 @@
       </el-card>
     </el-col>
   </el-row>
+
+  <el-row :gutter="20" class="mt">
+    <el-col :span="12">
+      <el-card>
+        <div class="card-title">部门资产分布</div>
+        <div ref="deptChartEl" class="chart" />
+      </el-card>
+    </el-col>
+    <el-col :span="12">
+      <el-card>
+        <div class="card-title">资产变动趋势</div>
+        <div ref="changeChartEl" class="chart" />
+      </el-card>
+    </el-col>
+  </el-row>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { http } from '../api/http'
 import * as echarts from 'echarts'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 type Stats = {
   total: number
@@ -106,14 +126,33 @@ type ConsumablePredictionItem = {
   predicted_usage: number
 }
 
+type DeptStats = {
+  deptId: string
+  deptName: string
+  total: number
+}
+
+type TrendPoint = {
+  date: string
+  count: number
+}
+
 const stats = ref<Stats | null>(null)
 const warnings = ref<WarningItem[]>([])
 const idleRecommendations = ref<IdleRecommendationItem[]>([])
 const consumablePredictions = ref<ConsumablePredictionItem[]>([])
+const deptStats = ref<DeptStats[]>([])
+const changeTrend = ref<TrendPoint[]>([])
 const chartEl = ref<HTMLDivElement | null>(null)
 const consumableChartEl = ref<HTMLDivElement | null>(null)
+const deptChartEl = ref<HTMLDivElement | null>(null)
+const changeChartEl = ref<HTMLDivElement | null>(null)
 let chart: echarts.ECharts | null = null
 let consumableChart: echarts.ECharts | null = null
+let deptChart: echarts.ECharts | null = null
+let changeChart: echarts.ECharts | null = null
+
+const router = useRouter()
 
 const load = async () => {
   const s = await http.get('/api/stats/today?refresh=true')
@@ -127,6 +166,26 @@ const load = async () => {
 
   const cp = await http.get('/api/stats/ai/consumable-predictions')
   if (cp.data?.success) consumablePredictions.value = cp.data.data
+
+  const ds = await http.get('/api/stats/by-dept')
+  if (ds.data?.success) deptStats.value = ds.data.data
+
+  const ct = await http.get('/api/stats/change-trend?days=30')
+  if (ct.data?.success) changeTrend.value = ct.data.data
+}
+
+const syncAiWarnings = async () => {
+  try {
+    const r = await http.get('/api/ai/sync')
+    if (r.data?.success) {
+      ElMessage.success(`同步成功，新增 ${r.data.data} 条预警`)
+      await load()
+    } else {
+      ElMessage.error(r.data?.message || '同步失败')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '同步失败')
+  }
 }
 
 const render = () => {
@@ -146,6 +205,12 @@ const render = () => {
         ],
       },
     ],
+  })
+
+  chart.off('click')
+  chart.on('click', (params: any) => {
+    if (!params?.name) return
+    router.push({ path: '/assets', query: { status: params.name } })
   })
 }
 
@@ -182,14 +247,51 @@ const renderConsumableChart = () => {
   })
 }
 
+const renderDeptChart = () => {
+  if (!deptChartEl.value || deptStats.value.length === 0) return
+  if (!deptChart) deptChart = echarts.init(deptChartEl.value)
+  const names = deptStats.value.map(d => d.deptName)
+  const values = deptStats.value.map(d => d.total)
+  deptChart.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: names, axisLabel: { rotate: 30 } },
+    yAxis: { type: 'value' },
+    series: [{ type: 'bar', data: values, itemStyle: { color: '#1E88E5' } }],
+  })
+  deptChart.off('click')
+  deptChart.on('click', (params: any) => {
+    const idx = params?.dataIndex
+    if (idx == null) return
+    const dept = deptStats.value[idx]
+    router.push({ path: '/assets', query: { deptId: dept.deptId } })
+  })
+}
+
+const renderChangeChart = () => {
+  if (!changeChartEl.value || changeTrend.value.length === 0) return
+  if (!changeChart) changeChart = echarts.init(changeChartEl.value)
+  const dates = changeTrend.value.map(d => d.date)
+  const counts = changeTrend.value.map(d => d.count)
+  changeChart.setOption({
+    tooltip: { trigger: 'axis' },
+    xAxis: { type: 'category', data: dates },
+    yAxis: { type: 'value' },
+    series: [{ type: 'line', smooth: true, data: counts, itemStyle: { color: '#FFC107' } }],
+  })
+}
+
 onMounted(async () => {
   await load()
   render()
   renderConsumableChart()
+  renderDeptChart()
+  renderChangeChart()
 })
 
 watch(stats, () => render())
 watch(consumablePredictions, () => renderConsumableChart())
+watch(deptStats, () => renderDeptChart())
+watch(changeTrend, () => renderChangeChart())
 </script>
 
 <style scoped>
@@ -225,4 +327,3 @@ watch(consumablePredictions, () => renderConsumableChart())
   color: #666666;
 }
 </style>
-

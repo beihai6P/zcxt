@@ -29,15 +29,19 @@ services:
 
   ai:
     build:
-      context: ..
-      dockerfile: ai-service/Dockerfile
+      context: ../ai-service
+      dockerfile: Dockerfile
     ports:
       - "9000:9000"
+    environment:
+      LLM_API_KEY: "your-api-key-here"
+      LLM_API_URL: "https://api.openai.com/v1/chat/completions"
+      LLM_MODEL: "gpt-3.5-turbo"
 
   backend:
     build:
-      context: ..
-      dockerfile: backend/Dockerfile
+      context: ../backend
+      dockerfile: Dockerfile
     environment:
       SPRING_PROFILES_ACTIVE: prod
       APP_SECURITY_JWT_SECRET: change-me-in-prod
@@ -54,8 +58,8 @@ services:
 
   frontend:
     build:
-      context: ..
-      dockerfile: frontend/Dockerfile
+      context: ../frontend
+      dockerfile: Dockerfile
     ports:
       - "5173:80"
     depends_on:

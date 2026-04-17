@@ -2,6 +2,8 @@ package com.zcxt.inventory.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.zcxt.asset.entity.AssetBase;
+import com.zcxt.asset.mapper.AssetBaseMapper;
 import com.zcxt.common.IdUtil;
 import com.zcxt.inventory.entity.AssetInventory;
 import com.zcxt.inventory.entity.AssetInventoryDetail;
@@ -11,15 +13,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class AssetInventoryService {
     private final AssetInventoryMapper inventoryMapper;
     private final AssetInventoryDetailMapper detailMapper;
+    private final AssetBaseMapper assetBaseMapper;
 
-    public AssetInventoryService(AssetInventoryMapper inventoryMapper, AssetInventoryDetailMapper detailMapper) {
+    public AssetInventoryService(AssetInventoryMapper inventoryMapper, AssetInventoryDetailMapper detailMapper, AssetBaseMapper assetBaseMapper) {
         this.inventoryMapper = inventoryMapper;
         this.detailMapper = detailMapper;
+        this.assetBaseMapper = assetBaseMapper;
     }
 
     public Page<AssetInventory> page(int page, int size, String keyword) {
@@ -51,6 +56,7 @@ public class AssetInventoryService {
         }
         
         inventoryMapper.insert(in);
+        generateDetails(in, now);
         return in;
     }
 
@@ -76,5 +82,65 @@ public class AssetInventoryService {
         query.eq(AssetInventoryDetail::getInventoryId, inventoryId);
         
         return detailMapper.selectPage(new Page<>(current, pageSize), query);
+    }
+
+    @Transactional
+    public void check(String inventoryId, String assetId, String status, String abnormalType, String abnormalReason, String checkerId) {
+        AssetInventory inv = inventoryMapper.selectById(inventoryId);
+        if (inv == null) {
+            throw new IllegalStateException("盘点任务不存在");
+        }
+        if (!"进行中".equals(inv.getStatus())) {
+            throw new IllegalStateException("盘点任务非进行中状态");
+        }
+
+        AssetInventoryDetail d = detailMapper.selectOne(new LambdaQueryWrapper<AssetInventoryDetail>()
+                .eq(AssetInventoryDetail::getInventoryId, inventoryId)
+                .eq(AssetInventoryDetail::getAssetId, assetId));
+        if (d == null) {
+            throw new IllegalStateException("资产不在本次盘点范围内");
+        }
+        d.setStatus(status);
+        d.setAbnormalType(abnormalType);
+        d.setAbnormalReason(abnormalReason);
+        d.setCheckerId(checkerId);
+        d.setCheckTime(LocalDateTime.now());
+        detailMapper.updateById(d);
+    }
+
+    @Transactional
+    public void finish(String inventoryId) {
+        AssetInventory inv = inventoryMapper.selectById(inventoryId);
+        if (inv == null) {
+            throw new IllegalStateException("盘点任务不存在");
+        }
+        inv.setStatus("已完成");
+        inv.setUpdateTime(LocalDateTime.now());
+        inventoryMapper.updateById(inv);
+    }
+
+    private void generateDetails(AssetInventory inv, LocalDateTime now) {
+        LambdaQueryWrapper<AssetBase> q = new LambdaQueryWrapper<>();
+        String scope = inv.getScopeType();
+        if ("部门盘点".equals(scope)) {
+            if (inv.getDeptId() == null || inv.getDeptId().isBlank()) {
+                throw new IllegalStateException("部门盘点需要填写部门ID");
+            }
+            q.eq(AssetBase::getDeptId, inv.getDeptId());
+        } else if ("分类盘点".equals(scope)) {
+            if (inv.getAssetType() == null || inv.getAssetType().isBlank()) {
+                throw new IllegalStateException("分类盘点需要填写资产类型");
+            }
+            q.eq(AssetBase::getAssetType, inv.getAssetType());
+        }
+        List<AssetBase> assets = assetBaseMapper.selectList(q);
+        for (AssetBase a : assets) {
+            AssetInventoryDetail d = new AssetInventoryDetail();
+            d.setDetailId(IdUtil.uuid32());
+            d.setInventoryId(inv.getInventoryId());
+            d.setAssetId(a.getAssetId());
+            d.setStatus("待盘点");
+            detailMapper.insert(d);
+        }
     }
 }

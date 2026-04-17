@@ -100,6 +100,6 @@ select 'dept-it', '信息技术部', null, current_timestamp, current_timestamp
 where not exists (select 1 from sys_dept where dept_id = 'dept-it');
 
 insert into sys_user (user_id, username, password_hash, display_name, dept_id, role_id, email, enabled, create_time, update_time)
-select 'user-admin', 'admin', '$2a$10$jiWMXRhBGb4yVf0OWG5xS.3dFAgGB7lsgwL4PdSqF6QTR0S1oT.7a', '管理员', 'dept-it', 'role-super', null, true, current_timestamp, current_timestamp
+select 'user-admin', 'admin', '$2a$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', '管理员', 'dept-it', 'role-super', null, true, current_timestamp, current_timestamp
 where not exists (select 1 from sys_user where user_id = 'user-admin');
 

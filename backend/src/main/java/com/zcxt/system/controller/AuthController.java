@@ -12,12 +12,14 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -35,6 +37,7 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         try {
+            // 正常的认证流程
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.username(), request.password())
             );
@@ -45,7 +48,12 @@ public class AuthController {
             ));
 
             SysUser user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUserId, principal.getUserId()));
-            return ApiResponse.ok(new LoginResponse(token, user.getUserId(), user.getUsername(), user.getDisplayName(), user.getRoleId(), user.getDeptId()));
+            var perms = principal.getAuthorities().stream()
+                    .map(GrantedAuthority::getAuthority)
+                    .filter(a -> !a.startsWith("ROLE_"))
+                    .sorted()
+                    .collect(Collectors.toList());
+            return ApiResponse.ok(new LoginResponse(token, user.getUserId(), user.getUsername(), user.getDisplayName(), user.getRoleId(), user.getDeptId(), perms));
         } catch (AuthenticationException e) {
             return ApiResponse.fail("用户名或密码错误");
         }
@@ -54,6 +62,6 @@ public class AuthController {
     public record LoginRequest(@NotBlank String username, @NotBlank String password) {
     }
 
-    public record LoginResponse(String token, String userId, String username, String displayName, String roleId, String deptId) {
+    public record LoginResponse(String token, String userId, String username, String displayName, String roleId, String deptId, java.util.List<String> permissions) {
     }
 }

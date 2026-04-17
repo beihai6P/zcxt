@@ -24,8 +24,9 @@
       <el-table-column prop="approvalId" label="审批单号" width="160" />
       <el-table-column prop="assetId" label="资产编号" width="160" />
       <el-table-column prop="applicantId" label="申请人" width="120" />
-      <el-table-column prop="approvalType" label="审批类型" width="120" />
-      <el-table-column prop="reason" label="申请理由" min-width="200" show-overflow-tooltip />
+    <el-table-column prop="applyType" label="申请类型" width="120" />
+    <el-table-column prop="applyReason" label="申请理由" min-width="200" show-overflow-tooltip />
+    <el-table-column prop="targetStatus" label="目标状态" width="100" />
       <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">
           <el-tag :type="getStatusType(row.status)">{{ row.status }}</el-tag>
@@ -82,10 +83,13 @@ type AssetApproval = {
   assetId: string
   applicantId: string
   approverId: string | null
-  approvalType: string
+  applyType: string
   status: string
-  reason: string
-  comment: string | null
+  applyReason: string | null
+  approveRemark: string | null
+  targetDeptId: string | null
+  targetUserId: string | null
+  targetStatus: string | null
   applyTime: string
   approveTime: string | null
 }
