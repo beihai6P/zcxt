@@ -1,31 +1,44 @@
 spring:
   datasource:
-    url: jdbc:h2:file:./data/h2/zcxt;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
-    driverClassName: org.h2.Driver
+    url: jdbc:h2:mem:zcxt;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    driver-class-name: org.h2.Driver
     username: sa
     password:
   h2:
     console:
       enabled: true
       path: /h2-console
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
   flyway:
     enabled: true
+    baseline-on-migrate: true
     locations: classpath:db/migration
-  data:
-    redis:
-      repositories:
-        enabled: false
-  cache:
-    type: caffeine
-
-mybatis-plus:
-  configuration:
-    map-underscore-to-camel-case: true
+    baseline-version: 0
+    validate-on-migrate: true
 
 app:
   security:
     jwt:
-      secret: dev-jwt-secret-dev-jwt-secret-dev-jwt-secret
+      issuer: zcxt-dev
+      ttlSeconds: 86400
+      secret: ${APP_SECURITY_JWT_SECRET:dev-jwt-secret-change-in-prod}
   crypto:
-    aesKey: dev-aes-key-dev-aes-key-dev-aes-key
+    aesKey: ${APP_CRYPTO_AESKEY:dev-aes-key-change-in-prod}
+  qrcode:
+    baseUrl: http://localhost:8080
+    storage: local
+    localDir: ./data/qrcodes
+  ai:
+    enabled: true
+    baseUrl: http://localhost:9000
+  bigdata:
+    enabled: false
 
+logging:
+  level:
+    com.zcxt: INFO
+    org.flywaydb: INFO

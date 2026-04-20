@@ -2,30 +2,46 @@ services:
   mysql:
     image: mysql:8.4
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: zcxt
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-zcxt}
     ports:
       - "3306:3306"
     command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   redis:
     image: redis:7.4
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   minio:
     image: minio/minio:RELEASE.2025-01-20T14-49-07Z
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     command: server /data --console-address ":9002"
     ports:
       - "9001:9000"
       - "9002:9002"
     volumes:
       - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   ai:
     build:
@@ -34,27 +50,52 @@ services:
     ports:
       - "9000:9000"
     environment:
-      LLM_API_KEY: "your-api-key-here"
-      LLM_API_URL: "https://api.openai.com/v1/chat/completions"
-      LLM_MODEL: "gpt-3.5-turbo"
+      LLM_API_KEY: ${LLM_API_KEY:-your-api-key-here}
+      LLM_API_URL: ${LLM_API_URL:-https://api.openai.com/v1/chat/completions}
+      LLM_MODEL: ${LLM_MODEL:-gpt-3.5-turbo}
 
   backend:
     build:
       context: ../backend
       dockerfile: Dockerfile
     environment:
-      SPRING_PROFILES_ACTIVE: prod
-      APP_SECURITY_JWT_SECRET: change-me-in-prod
-      APP_CRYPTO_AESKEY: change-me-in-prod
-      APP_AI_ENABLED: "true"
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-zcxt}
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:?请设置数据库密码}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      APP_SECURITY_JWT_SECRET: ${APP_SECURITY_JWT_SECRET:?请设置JWT密钥}
+      APP_CRYPTO_AESKEY: ${APP_CRYPTO_AESKEY:?请设置AES密钥}
+      APP_AI_ENABLED: ${APP_AI_ENABLED:-true}
       APP_AI_BASEURL: http://ai:9000
+      APP_QRCODE_BASEURL: ${APP_QRCODE_BASEURL:-http://localhost:8080}
+      APP_QRCODE_STORAGE: ${APP_QRCODE_STORAGE:-local}
+      APP_QRCODE_LOCALDIR: /app/data/qrcodes
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-qrcodes}
+      FLYWAY_REPAIR: ${FLYWAY_REPAIR:-false}
     ports:
       - "8080:8080"
+    volumes:
+      - backend_data:/app/data
     depends_on:
-      - mysql
-      - redis
-      - minio
-      - ai
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   frontend:
     build:
@@ -68,4 +109,4 @@ services:
 volumes:
   mysql_data:
   minio_data:
-
+  backend_data:
